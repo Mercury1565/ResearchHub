@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Project struct {
 	ID        string    `json:"id"`
@@ -42,6 +45,16 @@ type Annotation struct {
 	FontSize     string      `json:"font_size"`
 	DeepLink     string      `json:"deep_link"` // researchhub:// URI
 	CreatedAt    time.Time   `json:"created_at"`
+}
+
+type CanvasMark struct {
+	ID         string          `json:"id"`
+	DocumentID string          `json:"document_id"`
+	PageNumber int             `json:"page_number"`
+	MarkType   string          `json:"mark_type"`
+	Data       json.RawMessage `json:"data"  swaggertype:"object"`
+	Style      json.RawMessage `json:"style" swaggertype:"object"`
+	CreatedAt  time.Time       `json:"created_at"`
 }
 
 type PageText struct {

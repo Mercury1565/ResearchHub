@@ -23,6 +23,16 @@ type Annotation struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
+type CanvasMark struct {
+	ID         pgtype.UUID        `json:"id"`
+	DocumentID pgtype.UUID        `json:"document_id"`
+	PageNumber int32              `json:"page_number"`
+	MarkType   string             `json:"mark_type"`
+	Data       json.RawMessage    `json:"data"`
+	Style      json.RawMessage    `json:"style"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type DocChunk struct {
 	ID          pgtype.UUID     `json:"id"`
 	DocumentID  pgtype.UUID     `json:"document_id"`

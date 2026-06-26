@@ -47,7 +47,7 @@ LIMIT $3
 type SearchChunksByProjectParams struct {
 	ProjectID pgtype.UUID     `json:"project_id"`
 	Embedding pgvector.Vector `json:"embedding"`
-	Limit     int64           `json:"limit"`
+	Limit     int32           `json:"limit"`
 }
 
 type SearchChunksByProjectRow struct {

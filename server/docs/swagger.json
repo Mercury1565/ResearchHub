@@ -288,6 +288,136 @@
                 }
             }
         },
+        "/documents/{documentID}/marks": {
+            "get": {
+                "description": "Returns all canvas marks (pen, arrow, text) for a document ordered by page and creation time.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "annotations"
+                ],
+                "summary": "List canvas marks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document UUID",
+                        "name": "documentID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CanvasMark"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a freehand, arrow, or text mark placed directly on the PDF canvas.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "annotations"
+                ],
+                "summary": "Create canvas mark",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Document UUID",
+                        "name": "documentID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Mark data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateCanvasMarkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.CanvasMark"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/marks/{markID}": {
+            "delete": {
+                "description": "Permanently removes a canvas mark from the PDF.",
+                "tags": [
+                    "annotations"
+                ],
+                "summary": "Delete canvas mark",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Mark UUID",
+                        "name": "markID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/projects": {
             "get": {
                 "description": "Returns all projects ordered by creation date descending.",
@@ -631,6 +761,27 @@
                 }
             }
         },
+        "api.CreateCanvasMarkRequest": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "mark_type": {
+                    "type": "string",
+                    "example": "pen"
+                },
+                "page_number": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "style": {
+                    "type": "object",
+                    "additionalProperties": {}
+                }
+            }
+        },
         "api.CreateProjectRequest": {
             "type": "object",
             "properties": {
@@ -707,6 +858,32 @@
                 },
                 "selection_txt": {
                     "type": "string"
+                }
+            }
+        },
+        "models.CanvasMark": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "object"
+                },
+                "document_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mark_type": {
+                    "type": "string"
+                },
+                "page_number": {
+                    "type": "integer"
+                },
+                "style": {
+                    "type": "object"
                 }
             }
         },

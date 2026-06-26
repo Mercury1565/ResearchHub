@@ -42,6 +42,18 @@ func mapDocument(row dbgen.Document) models.Document {
 	}
 }
 
+func mapCanvasMark(row dbgen.CanvasMark) models.CanvasMark {
+	return models.CanvasMark{
+		ID:         uuidStr(row.ID),
+		DocumentID: uuidStr(row.DocumentID),
+		PageNumber: int(row.PageNumber),
+		MarkType:   row.MarkType,
+		Data:       row.Data,
+		Style:      row.Style,
+		CreatedAt:  row.CreatedAt.Time,
+	}
+}
+
 func mapAnnotation(row dbgen.Annotation, projectID string) (models.Annotation, error) {
 	var coords models.Coordinates
 	if err := json.Unmarshal(row.Coordinates, &coords); err != nil {

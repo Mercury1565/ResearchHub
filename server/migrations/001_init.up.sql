@@ -1,7 +1,7 @@
 -- migrations/001_init.up.sql
+-- Core tables — no pgvector dependency.
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE projects (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -17,16 +17,14 @@ CREATE TABLE documents (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- doc_chunks stores extracted page text. The embedding column is added by
+-- migration 003 once pgvector is available.
 CREATE TABLE doc_chunks (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id  UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
     page_number  INT NOT NULL,
-    text_content TEXT NOT NULL,
-    embedding    vector(1536)
+    text_content TEXT NOT NULL
 );
-
--- HNSW index for fast approximate nearest-neighbor search
-CREATE INDEX ON doc_chunks USING hnsw (embedding vector_cosine_ops);
 
 CREATE TABLE annotations (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),

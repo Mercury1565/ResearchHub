@@ -44,6 +44,20 @@ type ChatRequest struct {
 	Message string `json:"message" example:"Summarize the key findings"`
 }
 
+// UpdateCanvasMarkRequest is the body for PUT /marks/{markID}.
+type UpdateCanvasMarkRequest struct {
+	Data  map[string]any `json:"data"`
+	Style map[string]any `json:"style"`
+}
+
+// CreateCanvasMarkRequest is the body for POST /documents/{documentID}/marks.
+type CreateCanvasMarkRequest struct {
+	PageNumber int                    `json:"page_number" example:"1"`
+	MarkType   string                 `json:"mark_type"   example:"pen"`
+	Data       map[string]any `json:"data"`
+	Style      map[string]any `json:"style"`
+}
+
 func RespondJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

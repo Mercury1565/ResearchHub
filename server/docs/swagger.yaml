@@ -25,6 +25,21 @@ definitions:
         example: selected text
         type: string
     type: object
+  api.CreateCanvasMarkRequest:
+    properties:
+      data:
+        additionalProperties: {}
+        type: object
+      mark_type:
+        example: pen
+        type: string
+      page_number:
+        example: 1
+        type: integer
+      style:
+        additionalProperties: {}
+        type: object
+    type: object
   api.CreateProjectRequest:
     properties:
       name:
@@ -77,6 +92,23 @@ definitions:
         type: integer
       selection_txt:
         type: string
+    type: object
+  models.CanvasMark:
+    properties:
+      created_at:
+        type: string
+      data:
+        type: object
+      document_id:
+        type: string
+      id:
+        type: string
+      mark_type:
+        type: string
+      page_number:
+        type: integer
+      style:
+        type: object
     type: object
   models.Coordinates:
     properties:
@@ -302,6 +334,94 @@ paths:
       summary: Get document file URL
       tags:
       - documents
+  /documents/{documentID}/marks:
+    get:
+      description: Returns all canvas marks (pen, arrow, text) for a document ordered
+        by page and creation time.
+      parameters:
+      - description: Document UUID
+        in: path
+        name: documentID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CanvasMark'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: List canvas marks
+      tags:
+      - annotations
+    post:
+      consumes:
+      - application/json
+      description: Creates a freehand, arrow, or text mark placed directly on the
+        PDF canvas.
+      parameters:
+      - description: Document UUID
+        in: path
+        name: documentID
+        required: true
+        type: string
+      - description: Mark data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateCanvasMarkRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.CanvasMark'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create canvas mark
+      tags:
+      - annotations
+  /marks/{markID}:
+    delete:
+      description: Permanently removes a canvas mark from the PDF.
+      parameters:
+      - description: Mark UUID
+        in: path
+        name: markID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Delete canvas mark
+      tags:
+      - annotations
   /projects:
     get:
       description: Returns all projects ordered by creation date descending.

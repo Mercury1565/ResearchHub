@@ -74,12 +74,20 @@ func NewRouter(
 			r.Get("/file", h.ServeDocumentFile)
 			r.Get("/annotations", h.ListAnnotations)
 			r.Post("/annotations", h.CreateAnnotation)
+			r.Get("/marks", h.ListCanvasMarks)
+			r.Post("/marks", h.CreateCanvasMark)
 		})
 
 		// Annotations
 		r.Route("/annotations/{annotationID}", func(r chi.Router) {
 			r.Put("/", h.UpdateAnnotation)
 			r.Delete("/", h.DeleteAnnotation)
+		})
+
+		// Canvas marks
+		r.Route("/marks/{markID}", func(r chi.Router) {
+			r.Put("/", h.UpdateCanvasMark)
+			r.Delete("/", h.DeleteCanvasMark)
 		})
 	})
 
