@@ -43,3 +43,19 @@ type Annotation struct {
 	DeepLink     string      `json:"deep_link"` // researchhub:// URI
 	CreatedAt    time.Time   `json:"created_at"`
 }
+
+type PageText struct {
+	Page int
+	Text string
+}
+
+type Chunk struct {
+	PageNumber int
+	Text       string
+}
+
+type Citation struct {
+	DocumentTitle string `json:"document_title"`
+	PageNumber    int    `json:"page_number"`
+	DocID         string `json:"doc_id"`
+}

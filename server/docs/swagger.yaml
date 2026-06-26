@@ -1,0 +1,512 @@
+basePath: /api
+definitions:
+  api.ChatRequest:
+    properties:
+      message:
+        example: Summarize the key findings
+        type: string
+    type: object
+  api.CreateAnnotationRequest:
+    properties:
+      coordinates:
+        $ref: '#/definitions/models.Coordinates'
+      font_size:
+        example: medium
+        type: string
+      font_style:
+        example: sans-serif
+        type: string
+      note_content:
+        type: string
+      page_number:
+        example: 1
+        type: integer
+      selection_txt:
+        example: selected text
+        type: string
+    type: object
+  api.CreateProjectRequest:
+    properties:
+      name:
+        example: My Research Project
+        type: string
+    type: object
+  api.ErrorResponse:
+    properties:
+      error:
+        example: invalid request body
+        type: string
+    type: object
+  api.RenameProjectRequest:
+    properties:
+      name:
+        example: Renamed Project
+        type: string
+    type: object
+  api.UpdateAnnotationRequest:
+    properties:
+      font_size:
+        example: medium
+        type: string
+      font_style:
+        example: sans-serif
+        type: string
+      note_content:
+        type: string
+    type: object
+  models.Annotation:
+    properties:
+      coordinates:
+        $ref: '#/definitions/models.Coordinates'
+      created_at:
+        type: string
+      deep_link:
+        description: researchhub:// URI
+        type: string
+      document_id:
+        type: string
+      font_size:
+        type: string
+      font_style:
+        type: string
+      id:
+        type: string
+      note_content:
+        type: string
+      page_number:
+        type: integer
+      selection_txt:
+        type: string
+    type: object
+  models.Coordinates:
+    properties:
+      height:
+        type: number
+      width:
+        type: number
+      x:
+        type: number
+      "y":
+        type: number
+    type: object
+  models.Document:
+    properties:
+      created_at:
+        type: string
+      file_name:
+        type: string
+      id:
+        type: string
+      project_id:
+        type: string
+    type: object
+  models.Project:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@researchhub.dev
+    name: ResearchHub Support
+  description: REST API for the ResearchHub research workspace.
+  license:
+    name: MIT
+  termsOfService: http://swagger.io/terms/
+  title: ResearchHub API
+  version: "1.0"
+paths:
+  /annotations/{annotationID}:
+    delete:
+      description: Permanently deletes an annotation.
+      parameters:
+      - description: Annotation UUID
+        in: path
+        name: annotationID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Delete annotation
+      tags:
+      - annotations
+    put:
+      consumes:
+      - application/json
+      description: Updates the note content, font style, and font size of an annotation.
+      parameters:
+      - description: Annotation UUID
+        in: path
+        name: annotationID
+        required: true
+        type: string
+      - description: Updated fields
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateAnnotationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Annotation'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Update annotation
+      tags:
+      - annotations
+  /documents/{documentID}:
+    get:
+      description: Returns metadata for a single document.
+      parameters:
+      - description: Document UUID
+        in: path
+        name: documentID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Document'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get document
+      tags:
+      - documents
+  /documents/{documentID}/annotations:
+    get:
+      description: Returns all annotations for a document ordered by page and creation
+        time.
+      parameters:
+      - description: Document UUID
+        in: path
+        name: documentID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Annotation'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: List annotations
+      tags:
+      - annotations
+    post:
+      consumes:
+      - application/json
+      description: Creates a highlight annotation with optional sticky note.
+      parameters:
+      - description: Document UUID
+        in: path
+        name: documentID
+        required: true
+        type: string
+      - description: Annotation data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateAnnotationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Annotation'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create annotation
+      tags:
+      - annotations
+  /documents/{documentID}/file:
+    get:
+      description: Returns a short-lived presigned URL to fetch the PDF.
+      parameters:
+      - description: Document UUID
+        in: path
+        name: documentID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get document file URL
+      tags:
+      - documents
+  /projects:
+    get:
+      description: Returns all projects ordered by creation date descending.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Project'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: List projects
+      tags:
+      - projects
+    post:
+      consumes:
+      - application/json
+      description: Creates a new project with the given name.
+      parameters:
+      - description: Project name
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Project'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Create project
+      tags:
+      - projects
+  /projects/{projectID}:
+    delete:
+      description: Deletes a project and cascades to documents, chunks, and annotations.
+      parameters:
+      - description: Project UUID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Delete project
+      tags:
+      - projects
+    put:
+      consumes:
+      - application/json
+      description: Updates the name of a project.
+      parameters:
+      - description: Project UUID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: New name
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.RenameProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Project'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Rename project
+      tags:
+      - projects
+  /projects/{projectID}/chat:
+    post:
+      consumes:
+      - application/json
+      description: Streams token-by-token AI responses over Server-Sent Events (SSE).
+      parameters:
+      - description: Project UUID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: User message
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.ChatRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Stream AI chat
+      tags:
+      - chat
+  /projects/{projectID}/documents:
+    get:
+      description: Returns all documents belonging to a project.
+      parameters:
+      - description: Project UUID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Document'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: List documents
+      tags:
+      - documents
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a PDF file and begins async text extraction and embedding.
+      parameters:
+      - description: Project UUID
+        in: path
+        name: projectID
+        required: true
+        type: string
+      - description: PDF file (max 25 MB)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Document'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Upload document
+      tags:
+      - documents
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

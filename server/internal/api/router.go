@@ -5,20 +5,41 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/researchhub/backend/config"
-	"github.com/researchhub/backend/internal/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
+
+	"github.com/researchhub/server/config"
+	dbgen "github.com/researchhub/server/internal/db/generated"
+	"github.com/researchhub/server/internal/middleware"
+	"github.com/researchhub/server/internal/services"
+
+	_ "github.com/researchhub/server/docs"
 )
 
-// Handler holds shared dependencies for all HTTP handlers.
 type Handler struct {
-	db  *pgxpool.Pool
-	cfg *config.Config
+	queries   *dbgen.Queries
+	storage   services.StorageService
+	pdf       services.PDFService
+	embedding services.EmbeddingService
+	rag       services.RAGService
+	cfg       *config.Config
 }
 
-// NewRouter wires up the chi router with all routes and middleware.
-func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
-	h := &Handler{db: pool, cfg: cfg}
+func NewRouter(
+	queries *dbgen.Queries,
+	storage services.StorageService,
+	pdf services.PDFService,
+	embedding services.EmbeddingService,
+	rag services.RAGService,
+	cfg *config.Config,
+) http.Handler {
+	h := &Handler{
+		queries:   queries,
+		storage:   storage,
+		pdf:       pdf,
+		embedding: embedding,
+		rag:       rag,
+		cfg:       cfg,
+	}
 
 	r := chi.NewRouter()
 
@@ -28,6 +49,10 @@ func NewRouter(pool *pgxpool.Pool, cfg *config.Config) http.Handler {
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(middleware.Logger)
 	r.Use(middleware.CORS(cfg.AllowedOrigins))
+
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	r.Route("/api", func(r chi.Router) {
 		// Projects

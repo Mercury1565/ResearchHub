@@ -1,3 +1,20 @@
+// @title           ResearchHub API
+// @version         1.0
+// @description     REST API for the ResearchHub research workspace.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   ResearchHub Support
+// @contact.email  support@researchhub.dev
+
+// @license.name  MIT
+
+// @host      localhost:8080
+// @BasePath  /api
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+
 package main
 
 import (
@@ -11,9 +28,11 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/researchhub/backend/config"
-	"github.com/researchhub/backend/internal/api"
-	"github.com/researchhub/backend/internal/db"
+	"github.com/researchhub/server/config"
+	"github.com/researchhub/server/internal/api"
+	"github.com/researchhub/server/internal/db"
+	dbgen "github.com/researchhub/server/internal/db/generated"
+	"github.com/researchhub/server/internal/services"
 )
 
 func main() {
@@ -28,13 +47,35 @@ func main() {
 	}
 	defer pool.Close()
 
-	router := api.NewRouter(pool, cfg)
+	queries := dbgen.New(pool)
+
+	storageSvc, err := services.NewStorageService(cfg)
+	if err != nil {
+		slog.Error("failed to init storage service", "err", err)
+		os.Exit(1)
+	}
+
+	pdfSvc := services.NewPDFService()
+
+	embeddingSvc, err := services.NewEmbeddingService(cfg)
+	if err != nil {
+		slog.Error("failed to init embedding service", "err", err)
+		os.Exit(1)
+	}
+
+	ragSvc, err := services.NewRAGService(queries, embeddingSvc, cfg)
+	if err != nil {
+		slog.Error("failed to init rag service", "err", err)
+		os.Exit(1)
+	}
+
+	router := api.NewRouter(queries, storageSvc, pdfSvc, embeddingSvc, ragSvc, cfg)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 60 * time.Second, // longer for SSE streaming
+		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 
