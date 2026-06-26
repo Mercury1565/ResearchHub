@@ -11,6 +11,25 @@ const FONT_FAMILIES: Record<FontStyle, string> = {
 
 const SCALE = 2; // render pages at 2× for crispness, then downscale into the PDF
 
+// Mimics CSS word-wrap: break-word for a canvas context.
+// Returns an array of lines that each fit within maxWidth pixels.
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let cur = '';
+  for (const word of words) {
+    const test = cur ? `${cur} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && cur) {
+      lines.push(cur);
+      cur = word;
+    } else {
+      cur = test;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
 function drawArrowhead(
   ctx: CanvasRenderingContext2D,
   from: { x: number; y: number },
@@ -105,13 +124,24 @@ function drawMarksOnCanvas(ctx: CanvasRenderingContext2D, marks: CanvasMark[], w
       const d        = mark.data as TextData;
       const fontSize = Math.round(1.1 * 16 * SCALE);
       const lineH    = fontSize * 1.4;
-      ctx.fillStyle   = color;
-      ctx.font        = `${fontSize}px ${FONT_FAMILIES[d.fontStyle ?? 'caveat']}`;
+      ctx.fillStyle    = color;
+      ctx.font         = `${fontSize}px ${FONT_FAMILIES[d.fontStyle ?? 'caveat']}`;
       ctx.textBaseline = 'middle';
-      const lines  = d.content.split('\n');
-      const totalH = lines.length * lineH;
+
+      // Max wrap width: stored fraction → canvas pixels; fall back to 40% of page (CSS default)
+      const maxPx = d.width ? d.width * w : 0.4 * w;
+
+      // Honour explicit \n newlines, then word-wrap each paragraph
+      const allLines: string[] = [];
+      for (const para of d.content.split('\n')) {
+        if (!para) { allLines.push(''); continue; }
+        allLines.push(...wrapText(ctx, para, maxPx));
+      }
+
+      // d.y is the vertical centre of the text block (CSS translateY(-50%))
+      const totalH = allLines.length * lineH;
       const startY = d.y * h - totalH / 2 + lineH / 2;
-      lines.forEach((line, i) => ctx.fillText(line, d.x * w, startY + i * lineH));
+      allLines.forEach((line, i) => ctx.fillText(line, d.x * w, startY + i * lineH));
     }
 
     ctx.restore();
