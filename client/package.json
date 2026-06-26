@@ -10,6 +10,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "jspdf": "^4.2.1",
     "ky": "^1.7.2",
     "pdfjs-dist": "^4.6.82",
     "react": "^18.3.1",
