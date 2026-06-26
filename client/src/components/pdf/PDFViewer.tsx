@@ -6,6 +6,7 @@ import { useDocumentFileUrl } from '../../api/documents';
 import { useWorkspaceStore } from '../../store/workspace';
 import { usePDFSelection } from '../../hooks/usePDFSelection';
 import AnnotationLayer from './AnnotationLayer';
+import DrawingLayer from './DrawingLayer';
 import Spinner from '../ui/Spinner';
 
 interface Props {
@@ -146,6 +147,10 @@ export default function PDFViewer({ documentId }: Props) {
             className="textLayer absolute top-0 left-0"
           />
           <AnnotationLayer
+            documentId={documentId}
+            pageNumber={pageNum}
+          />
+          <DrawingLayer
             documentId={documentId}
             pageNumber={pageNum}
           />

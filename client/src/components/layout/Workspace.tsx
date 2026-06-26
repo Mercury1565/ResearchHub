@@ -26,13 +26,13 @@ export default function Workspace() {
       </div>
 
       <PanelGroup direction="horizontal" className="flex-1">
-        <Panel defaultSize={65} minSize={40}>
+        <Panel defaultSize={78} minSize={50}>
           <ViewerPanel />
         </Panel>
 
         <PanelResizeHandle className="w-1 cursor-col-resize bg-[#E3E2DF] hover:bg-[#C8C7C4] transition-colors duration-100" />
 
-        <Panel defaultSize={35} minSize={25}>
+        <Panel defaultSize={22} minSize={14}>
           <NotesPanel />
         </Panel>
       </PanelGroup>
