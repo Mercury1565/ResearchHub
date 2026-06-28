@@ -12,49 +12,82 @@ import (
 )
 
 const createProject = `-- name: CreateProject :one
-INSERT INTO projects (name) VALUES ($1) RETURNING id, name, created_at
+INSERT INTO projects (name, user_id) VALUES ($1, $2) RETURNING id, name, created_at
 `
 
-func (q *Queries) CreateProject(ctx context.Context, name string) (Project, error) {
-	row := q.db.QueryRow(ctx, createProject, name)
-	var i Project
+type CreateProjectParams struct {
+	Name   string      `json:"name"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+type CreateProjectRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (CreateProjectRow, error) {
+	row := q.db.QueryRow(ctx, createProject, arg.Name, arg.UserID)
+	var i CreateProjectRow
 	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
 	return i, err
 }
 
 const deleteProject = `-- name: DeleteProject :exec
-DELETE FROM projects WHERE id = $1
+DELETE FROM projects WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) DeleteProject(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteProject, id)
+type DeleteProjectParams struct {
+	ID     pgtype.UUID `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+func (q *Queries) DeleteProject(ctx context.Context, arg DeleteProjectParams) error {
+	_, err := q.db.Exec(ctx, deleteProject, arg.ID, arg.UserID)
 	return err
 }
 
 const getProject = `-- name: GetProject :one
-SELECT id, name, created_at FROM projects WHERE id = $1
+SELECT id, name, created_at FROM projects WHERE id = $1 AND user_id = $2
 `
 
-func (q *Queries) GetProject(ctx context.Context, id pgtype.UUID) (Project, error) {
-	row := q.db.QueryRow(ctx, getProject, id)
-	var i Project
+type GetProjectParams struct {
+	ID     pgtype.UUID `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+type GetProjectRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetProject(ctx context.Context, arg GetProjectParams) (GetProjectRow, error) {
+	row := q.db.QueryRow(ctx, getProject, arg.ID, arg.UserID)
+	var i GetProjectRow
 	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
 	return i, err
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, name, created_at FROM projects ORDER BY created_at DESC
+SELECT id, name, created_at FROM projects WHERE user_id = $1 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListProjects(ctx context.Context) ([]Project, error) {
-	rows, err := q.db.Query(ctx, listProjects)
+type ListProjectsRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListProjects(ctx context.Context, userID pgtype.UUID) ([]ListProjectsRow, error) {
+	rows, err := q.db.Query(ctx, listProjects, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Project
+	var items []ListProjectsRow
 	for rows.Next() {
-		var i Project
+		var i ListProjectsRow
 		if err := rows.Scan(&i.ID, &i.Name, &i.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -67,17 +100,24 @@ func (q *Queries) ListProjects(ctx context.Context) ([]Project, error) {
 }
 
 const renameProject = `-- name: RenameProject :one
-UPDATE projects SET name = $2 WHERE id = $1 RETURNING id, name, created_at
+UPDATE projects SET name = $2 WHERE id = $1 AND user_id = $3 RETURNING id, name, created_at
 `
 
 type RenameProjectParams struct {
-	ID   pgtype.UUID `json:"id"`
-	Name string      `json:"name"`
+	ID     pgtype.UUID `json:"id"`
+	Name   string      `json:"name"`
+	UserID pgtype.UUID `json:"user_id"`
 }
 
-func (q *Queries) RenameProject(ctx context.Context, arg RenameProjectParams) (Project, error) {
-	row := q.db.QueryRow(ctx, renameProject, arg.ID, arg.Name)
-	var i Project
+type RenameProjectRow struct {
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) RenameProject(ctx context.Context, arg RenameProjectParams) (RenameProjectRow, error) {
+	row := q.db.QueryRow(ctx, renameProject, arg.ID, arg.Name, arg.UserID)
+	var i RenameProjectRow
 	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
 	return i, err
 }

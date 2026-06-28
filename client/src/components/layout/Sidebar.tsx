@@ -1,12 +1,20 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProjects, useCreateProject, useRenameProject, useDeleteProject } from '../../api/projects';
 import { useDocuments, useUploadDocument } from '../../api/documents';
 import { useWorkspaceStore } from '../../store/workspace';
+import { useAuthStore } from '../../store/auth';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import Spinner from '../ui/Spinner';
 
-export default function Sidebar() {
+interface SidebarProps {
+  onCollapse: () => void;
+}
+
+export default function Sidebar({ onCollapse }: SidebarProps) {
+  const navigate = useNavigate();
+  const { user, clearAuth } = useAuthStore();
   const { data: projects, isLoading } = useProjects();
   const { activeProjectId, setActiveProject, activeDocumentId, setActiveDocument } = useWorkspaceStore();
   const { data: documents } = useDocuments(activeProjectId);
@@ -66,8 +74,23 @@ export default function Sidebar() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-[#E3E2DF] px-4 py-3">
-        <h1 className="text-sm font-semibold tracking-wide text-[#1A1A1A]">ResearchHub</h1>
+      <div className="border-b border-[#E3E2DF] px-3 py-2 flex items-center justify-between">
+        <img
+          src="/logo.png"
+          alt="ResearchHub"
+          style={{ height: 36, width: 'auto' }}
+          draggable={false}
+        />
+        <button
+          onClick={onCollapse}
+          title="Collapse sidebar"
+          className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-[#A0A09A] hover:bg-[#EFEEEC] hover:text-[#1A1A1A] transition-colors duration-100"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+            strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="8,2 4,6 8,10" />
+          </svg>
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">
@@ -205,6 +228,16 @@ export default function Sidebar() {
           </>
         )}
       </nav>
+
+      <div className="border-t border-[#E3E2DF] px-3 py-2 flex items-center justify-between gap-2">
+        <span className="text-xs text-[#6B6B6B] truncate">{user?.email ?? ''}</span>
+        <button
+          onClick={() => { clearAuth(); navigate('/login', { replace: true }); }}
+          className="text-xs text-[#6B6B6B] hover:text-[#E03E3E] transition-colors duration-100 shrink-0"
+        >
+          Sign out
+        </button>
+      </div>
 
       <Modal open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)} title="Delete project">
         <p className="mb-4 text-sm text-[#6B6B6B]">

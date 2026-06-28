@@ -1,5 +1,12 @@
 basePath: /api
 definitions:
+  api.AuthResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/api.UserPublic'
+    type: object
   api.ChatRequest:
     properties:
       message:
@@ -52,6 +59,24 @@ definitions:
         example: invalid request body
         type: string
     type: object
+  api.LoginRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: s3cret
+        type: string
+    type: object
+  api.RegisterRequest:
+    properties:
+      email:
+        example: user@example.com
+        type: string
+      password:
+        example: s3cret
+        type: string
+    type: object
   api.RenameProjectRequest:
     properties:
       name:
@@ -67,6 +92,24 @@ definitions:
         example: sans-serif
         type: string
       note_content:
+        type: string
+    type: object
+  api.UpdateCanvasMarkRequest:
+    properties:
+      data:
+        additionalProperties: {}
+        type: object
+      style:
+        additionalProperties: {}
+        type: object
+    type: object
+  api.UserPublic:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
         type: string
     type: object
   models.Annotation:
@@ -210,6 +253,74 @@ paths:
       summary: Update annotation
       tags:
       - annotations
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and returns a JWT.
+      parameters:
+      - description: Email and password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Login
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account and returns a JWT.
+      parameters:
+      - description: Email and password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Register
+      tags:
+      - auth
   /documents/{documentID}:
     get:
       description: Returns metadata for a single document.
@@ -422,9 +533,44 @@ paths:
       summary: Delete canvas mark
       tags:
       - annotations
+    put:
+      consumes:
+      - application/json
+      description: Updates the position/shape data of a canvas mark (move operation).
+      parameters:
+      - description: Mark UUID
+        in: path
+        name: markID
+        required: true
+        type: string
+      - description: Updated data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.UpdateCanvasMarkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CanvasMark'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Update canvas mark
+      tags:
+      - annotations
   /projects:
     get:
-      description: Returns all projects ordered by creation date descending.
+      description: Returns all projects for the current user ordered by creation date
+        descending.
       produces:
       - application/json
       responses:
@@ -434,10 +580,16 @@ paths:
             items:
               $ref: '#/definitions/models.Project'
             type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: List projects
       tags:
       - projects
@@ -463,16 +615,23 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Create project
       tags:
       - projects
   /projects/{projectID}:
     delete:
-      description: Deletes a project and cascades to documents, chunks, and annotations.
+      description: Deletes a project owned by the current user and cascades to documents,
+        chunks, and annotations.
       parameters:
       - description: Project UUID
         in: path
@@ -486,17 +645,23 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Delete project
       tags:
       - projects
     put:
       consumes:
       - application/json
-      description: Updates the name of a project.
+      description: Updates the name of a project owned by the current user.
       parameters:
       - description: Project UUID
         in: path
@@ -520,6 +685,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -528,6 +697,8 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/api.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Rename project
       tags:
       - projects

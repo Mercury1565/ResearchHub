@@ -16,6 +16,9 @@ type Config struct {
 	Port           string
 	AllowedOrigins string
 
+	// Auth
+	JWTSecret string
+
 	// Database
 	DatabaseURL string
 
@@ -41,6 +44,7 @@ func Load() *Config {
 	return &Config{
 		Port:           getEnv("PORT", "8080"),
 		AllowedOrigins: getEnv("ALLOWED_ORIGINS", "http://localhost:5173"),
+		JWTSecret:      getEnv("JWT_SECRET", "change-me-in-production"),
 
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/researchhub?sslmode=disable"),
 
