@@ -109,12 +109,12 @@ function UndoIcon() {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DRAW_TOOLS: { tool: DrawTool; icon: React.ReactNode; title: string }[] = [
-  { tool: "pen", icon: <PenIcon />, title: "Pen — freehand drawing" },
   {
     tool: "arrow",
     icon: <ArrowIcon />,
     title: "Arrow — drag to place an arrow",
   },
+  { tool: "pen", icon: <PenIcon />, title: "Pen — freehand drawing" },
   {
     tool: "text",
     icon: <span className="text-[11px] font-medium leading-none">T</span>,
@@ -166,6 +166,13 @@ const FONTS: { value: FontStyle; label: string }[] = [
   { value: "sans-serif", label: "Regular" },
 ];
 
+const FONT_SIZES: { value: number; label: string }[] = [
+  { value: 8,  label: "8"  },
+  { value: 12, label: "12" },
+  { value: 16, label: "16" },
+  { value: 24, label: "24" },
+];
+
 const FONT_FAMILIES: Record<FontStyle, string> = {
   "sans-serif": "Inter, sans-serif",
   caveat: '"Caveat", cursive',
@@ -182,12 +189,14 @@ export default function DrawingToolbar() {
   const highlightColor  = useWorkspaceStore((s) => s.highlightColor);
   const strokeWidth     = useWorkspaceStore((s) => s.strokeWidth);
   const textFontStyle   = useWorkspaceStore((s) => s.textFontStyle);
+  const textFontSizePt  = useWorkspaceStore((s) => s.textFontSizePt);
   const undoStack       = useWorkspaceStore((s) => s.undoStack);
   const setActiveTool      = useWorkspaceStore((s) => s.setActiveTool);
   const setDrawColor       = useWorkspaceStore((s) => s.setDrawColor);
   const setHighlightColor  = useWorkspaceStore((s) => s.setHighlightColor);
   const setStrokeWidth     = useWorkspaceStore((s) => s.setStrokeWidth);
   const setTextFontStyle   = useWorkspaceStore((s) => s.setTextFontStyle);
+  const setTextFontSizePt  = useWorkspaceStore((s) => s.setTextFontSizePt);
   const popUndo            = useWorkspaceStore((s) => s.popUndo);
 
   const isHighlight = activeTool === "highlight";
@@ -244,7 +253,7 @@ export default function DrawingToolbar() {
         </button>
         <button
           onClick={() => isReadMode && toggleMode()}
-          title="Draw mode — annotate the PDF"
+          title="Doodle mode — annotate the PDF"
           className={[
             "border-l border-[#E3E2DF] px-3 py-1 text-xs transition-colors duration-100",
             isDrawMode
@@ -252,7 +261,7 @@ export default function DrawingToolbar() {
               : "bg-white text-[#6B6B6B] hover:bg-[#F7F7F5]",
           ].join(" ")}
         >
-          ✏ Draw
+          ✏️ Doodle
         </button>
       </div>
 
@@ -325,26 +334,48 @@ export default function DrawingToolbar() {
                 </div>
               )}
 
-              {/* Font picker (text tool only) */}
+              {/* Font family + size (text tool only) */}
               {activeTool === "text" && (
-                <div className="flex items-center gap-0.5">
-                  {FONTS.map(({ value, label }) => (
-                    <button
-                      key={value}
-                      title={label}
-                      onClick={() => setTextFontStyle(value)}
-                      className={[
-                        "rounded px-2 py-0.5 text-xs transition-colors duration-100",
-                        textFontStyle === value
-                          ? "bg-[#EFEEEC] text-[#1A1A1A]"
-                          : "text-[#6B6B6B] hover:bg-[#F7F7F5]",
-                      ].join(" ")}
-                      style={{ fontFamily: FONT_FAMILIES[value] }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className="flex items-center gap-0.5">
+                    {FONTS.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        title={label}
+                        onClick={() => setTextFontStyle(value)}
+                        className={[
+                          "rounded px-2 py-0.5 text-xs transition-colors duration-100",
+                          textFontStyle === value
+                            ? "bg-[#EFEEEC] text-[#1A1A1A]"
+                            : "text-[#6B6B6B] hover:bg-[#F7F7F5]",
+                        ].join(" ")}
+                        style={{ fontFamily: FONT_FAMILIES[value] }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="h-4 w-px bg-[#E3E2DF]" />
+
+                  <div className="flex items-center gap-0.5">
+                    {FONT_SIZES.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        title={`Font size ${label}pt`}
+                        onClick={() => setTextFontSizePt(value)}
+                        className={[
+                          "rounded px-1.5 py-0.5 text-xs transition-colors duration-100",
+                          textFontSizePt === value
+                            ? "bg-[#EFEEEC] text-[#1A1A1A] font-medium"
+                            : "text-[#6B6B6B] hover:bg-[#F7F7F5]",
+                        ].join(" ")}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </>
           )}

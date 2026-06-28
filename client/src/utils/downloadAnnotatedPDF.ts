@@ -122,7 +122,9 @@ function drawMarksOnCanvas(ctx: CanvasRenderingContext2D, marks: CanvasMark[], w
 
     } else if (mark.mark_type === 'text') {
       const d        = mark.data as TextData;
-      const fontSize = Math.round(1.1 * 16 * SCALE);
+      // h is already native_height * SCALE (the 2× canvas), so no extra SCALE needed.
+      // d.fontSize = BASE_FONT_PX / native_height → fontSize = BASE_FONT_PX * SCALE ≈ 35px
+      const fontSize = Math.round((d.fontSize ?? 0.02) * h);
       const lineH    = fontSize * 1.4;
       ctx.fillStyle    = color;
       ctx.font         = `${fontSize}px ${FONT_FAMILIES[d.fontStyle ?? 'caveat']}`;

@@ -23,6 +23,10 @@ const FONT_FAMILIES: Record<FontStyle, string> = {
 
 const ERASER_PX: Record<number, number> = { 1.5: 18, 2.5: 30, 4: 46 };
 
+// Font size is stored as fraction of native page height so it scales with zoom.
+// DEFAULT_FONT_FRACTION is the fallback for marks saved before per-mark font size was added.
+const DEFAULT_FONT_FRACTION = 0.02;
+
 // ── Geometry helpers ──────────────────────────────────────────────────────────
 
 function pointsToPath(pts: Pt[], w: number, h: number): string {
@@ -106,6 +110,13 @@ function markIntersectsEraser(
   }
   if (mark.mark_type === 'text') {
     const d = mark.data as TextData;
+    // Text div is anchored at (d.x, d.y) with translateY(-50%), so the box is
+    // vertically centered on d.y. Use the full stored bounding rect when available.
+    if (d.width && d.height) {
+      const ty1 = d.y - d.height / 2;
+      const ty2 = d.y + d.height / 2;
+      return !(d.x + d.width < bx1 || d.x > bx2 || ty2 < by1 || ty1 > by2);
+    }
     return inBox({ x: d.x, y: d.y });
   }
   if (mark.mark_type === 'highlight') {
@@ -224,12 +235,14 @@ export default function DrawingLayer({ documentId, pageNumber }: Props) {
   const editRef    = useRef<HTMLTextAreaElement>(null);
   const [dims, setDims] = useState({ w: 0, h: 0 });
 
-  const activeTool     = useWorkspaceStore(s => s.activeTool);
-  const drawColor      = useWorkspaceStore(s => s.drawColor);
-  const highlightColor = useWorkspaceStore(s => s.highlightColor);
-  const strokeWidth    = useWorkspaceStore(s => s.strokeWidth);
-  const textFontStyle = useWorkspaceStore(s => s.textFontStyle);
-  const pushUndo      = useWorkspaceStore(s => s.pushUndo);
+  const activeTool       = useWorkspaceStore(s => s.activeTool);
+  const drawColor        = useWorkspaceStore(s => s.drawColor);
+  const highlightColor   = useWorkspaceStore(s => s.highlightColor);
+  const strokeWidth      = useWorkspaceStore(s => s.strokeWidth);
+  const textFontStyle    = useWorkspaceStore(s => s.textFontStyle);
+  const textFontSizePt   = useWorkspaceStore(s => s.textFontSizePt);
+  const zoom             = useWorkspaceStore(s => s.zoom);
+  const pushUndo         = useWorkspaceStore(s => s.pushUndo);
 
   const { data: marks } = useCanvasMarks(documentId);
   const createMark  = useCreateCanvasMark();
@@ -243,8 +256,9 @@ export default function DrawingLayer({ documentId, pageNumber }: Props) {
   const [textInput,   setTextInput]   = useState('');
 
   // Text editing (click in text/move mode → resizable textarea)
-  const [editingMarkId, setEditingMarkId] = useState<string | null>(null);
-  const [editContent,   setEditContent]   = useState('');
+  const [editingMarkId,   setEditingMarkId]   = useState<string | null>(null);
+  const [editContent,     setEditContent]     = useState('');
+  const [editFontSizePt,  setEditFontSizePt]  = useState(12);
 
   // Move drag
   const [dragging, setDragging] = useState<{
@@ -339,9 +353,15 @@ export default function DrawingLayer({ documentId, pageNumber }: Props) {
   // ── Text editing ─────────────────────────────────────────────────────────────
 
   const startEditing = useCallback((m: CanvasMark) => {
+    const raw = m.data as TextData;
+    // Convert stored fraction back to pt: fraction * native_h = fraction * dims.h / zoom
+    const sizePt = raw.fontSize && dims.h && zoom
+      ? Math.round(raw.fontSize * dims.h / zoom)
+      : textFontSizePt;
+    setEditFontSizePt(sizePt);
     setEditingMarkId(m.id);
-    setEditContent((m.data as TextData).content);
-  }, []);
+    setEditContent(raw.content);
+  }, [dims.h, zoom, textFontSizePt]);
 
   const commitEdit = useCallback((el: HTMLTextAreaElement) => {
     if (!editingMarkId || !dims.w || !dims.h) return;
@@ -349,25 +369,28 @@ export default function DrawingLayer({ documentId, pageNumber }: Props) {
     setEditingMarkId(null);
     if (!mark) return;
 
-    const raw        = mark.data as TextData;
-    const newContent = editContent.trim();
-    const newW = el.offsetWidth  / dims.w;
-    const newH = el.offsetHeight / dims.h;
+    const raw            = mark.data as TextData;
+    const newContent     = editContent.trim();
+    const newW           = el.offsetWidth  / dims.w;
+    const newH           = el.offsetHeight / dims.h;
+    const newFontSizeFrac = editFontSizePt * zoom / dims.h;
 
     if (!newContent) {
       deleteMark.mutate({ id: mark.id, documentId });
       return;
     }
     if (newContent !== raw.content ||
-        Math.abs(newW - (raw.width  ?? 0)) > 0.005 ||
-        Math.abs(newH - (raw.height ?? 0)) > 0.005) {
+        Math.abs(newW - (raw.width    ?? 0)) > 0.005 ||
+        Math.abs(newH - (raw.height   ?? 0)) > 0.005 ||
+        Math.abs(newFontSizeFrac - (raw.fontSize ?? 0)) > 0.0001) {
       updateMark.mutate({
         id: mark.id, documentId,
-        data:  { ...raw, content: newContent, width: newW, height: newH } as TextData,
+        data:  { ...raw, content: newContent, width: newW, height: newH,
+                 fontSize: newFontSizeFrac } as TextData,
         style: mark.style as MarkStyle,
       });
     }
-  }, [editingMarkId, editContent, dims, marks, documentId, updateMark, deleteMark]);
+  }, [editingMarkId, editContent, editFontSizePt, dims, zoom, marks, documentId, updateMark, deleteMark]);
 
   // ── SVG handlers — pen + freehand arrow share livePoints ─────────────────────
 
@@ -515,12 +538,16 @@ export default function DrawingLayer({ documentId, pageNumber }: Props) {
     if (!pendingText) return;
     const content = textInput.trim();
     if (content) {
-      const el = newTextRef.current;
-      const w  = el && dims.w ? el.offsetWidth  / dims.w : undefined;
-      const h  = el && dims.h ? el.offsetHeight / dims.h : undefined;
+      const el       = newTextRef.current;
+      const w        = el && dims.w ? el.offsetWidth  / dims.w : undefined;
+      const h        = el && dims.h ? el.offsetHeight / dims.h : undefined;
+      // Store as fraction of native page height (zoom-independent):
+      // textFontSizePt * zoom / dims.h = textFontSizePt / (dims.h / zoom) = sizePt / native_h
+      const fontSize = dims.h ? textFontSizePt * zoom / dims.h : DEFAULT_FONT_FRACTION;
       createMark.mutate(
         { documentId, page_number: pageNumber, mark_type: 'text',
-          data: { x: pendingText.fx, y: pendingText.fy, content, fontStyle: textFontStyle, width: w, height: h } as TextData,
+          data: { x: pendingText.fx, y: pendingText.fy, content, fontStyle: textFontStyle,
+                  width: w, height: h, fontSize } as TextData,
           style: { color: drawColor, strokeWidth } },
         { onSuccess: m => pushUndo({ markId: m.id, documentId }) }
       );
@@ -615,6 +642,9 @@ export default function DrawingLayer({ documentId, pageNumber }: Props) {
           ? { x: raw.x + dragging!.offset.x, y: raw.y + dragging!.offset.y }
           : { x: raw.x, y: raw.y };
 
+        // Font size scales proportionally with page height
+        const fontSizePx = (raw.fontSize ?? DEFAULT_FONT_FRACTION) * dims.h;
+
         // Base dimensions: stored (px) or sensible default for resize init
         const baseW = raw.width  ? raw.width  * dims.w : 180;
         const baseH = raw.height ? raw.height * dims.h : 40;
@@ -638,33 +668,70 @@ export default function DrawingLayer({ documentId, pageNumber }: Props) {
             }}
           >
             {isEditing ? (
-              /* Editing: resizable textarea */
-              <textarea
-                ref={editRef}
-                value={editContent}
-                onChange={e => setEditContent(e.target.value)}
-                onBlur={e => commitEdit(e.currentTarget)}
-                onKeyDown={e => { if (e.key === 'Escape') setEditingMarkId(null); }}
-                style={{
-                  display:      'block',
-                  width:        baseW,
-                  height:       baseH,
-                  minWidth:     80,
-                  minHeight:    36,
-                  resize:       'both',
-                  overflow:     'auto',
-                  fontFamily:   FONT_FAMILIES[raw.fontStyle ?? 'caveat'],
-                  color:        s.color,
-                  fontSize:     '1.1rem',
-                  lineHeight:   1.4,
-                  border:       '1.5px solid #2383E2',
-                  borderRadius: 3,
-                  padding:      '3px 5px',
-                  background:   'rgba(255,255,255,0.92)',
-                  outline:      'none',
-                  boxShadow:    '0 1px 4px rgba(0,0,0,0.12)',
-                }}
-              />
+              /* Editing: size picker + resizable textarea */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div
+                  style={{
+                    display:      'flex',
+                    alignItems:   'center',
+                    gap:          2,
+                    background:   'white',
+                    border:       '1px solid #E3E2DF',
+                    borderRadius: 4,
+                    padding:      '2px 4px',
+                    boxShadow:    '0 1px 4px rgba(0,0,0,0.10)',
+                  }}
+                  onMouseDown={e => e.preventDefault()} // keep textarea focus
+                >
+                  {([8, 12, 16, 24] as const).map(size => (
+                    <button
+                      key={size}
+                      title={`Font size ${size}pt`}
+                      onClick={() => setEditFontSizePt(size)}
+                      style={{
+                        padding:      '1px 6px',
+                        borderRadius: 3,
+                        fontSize:     11,
+                        fontFamily:   'Inter, sans-serif',
+                        border:       'none',
+                        cursor:       'pointer',
+                        background:   editFontSizePt === size ? '#EFEEEC' : 'transparent',
+                        color:        editFontSizePt === size ? '#1A1A1A' : '#6B6B6B',
+                        fontWeight:   editFontSizePt === size ? 500 : 400,
+                        transition:   'background 100ms',
+                      }}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  ref={editRef}
+                  value={editContent}
+                  onChange={e => setEditContent(e.target.value)}
+                  onBlur={e => commitEdit(e.currentTarget)}
+                  onKeyDown={e => { if (e.key === 'Escape') setEditingMarkId(null); }}
+                  style={{
+                    display:      'block',
+                    width:        baseW,
+                    height:       baseH,
+                    minWidth:     80,
+                    minHeight:    36,
+                    resize:       'both',
+                    overflow:     'auto',
+                    fontFamily:   FONT_FAMILIES[raw.fontStyle ?? 'caveat'],
+                    color:        s.color,
+                    fontSize:     editFontSizePt * zoom,
+                    lineHeight:   1.4,
+                    border:       '1.5px solid #2383E2',
+                    borderRadius: 3,
+                    padding:      '3px 5px',
+                    background:   'rgba(255,255,255,0.92)',
+                    outline:      'none',
+                    boxShadow:    '0 1px 4px rgba(0,0,0,0.12)',
+                  }}
+                />
+              </div>
             ) : (
               /* Display: interactive in text/move mode */
               <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -677,7 +744,7 @@ export default function DrawingLayer({ documentId, pageNumber }: Props) {
                     overflow:     displayW || displayH ? 'hidden' : undefined,
                     color:        s.color,
                     fontFamily:   FONT_FAMILIES[raw.fontStyle ?? 'caveat'],
-                    fontSize:     '1.1rem',
+                    fontSize:     fontSizePx,
                     userSelect:   'none',
                     pointerEvents: canInteract ? 'all' : 'none',
                     cursor:       isMove
@@ -754,7 +821,7 @@ export default function DrawingLayer({ documentId, pageNumber }: Props) {
               overflow:     'auto',
               fontFamily:   FONT_FAMILIES[textFontStyle],
               color:        drawColor,
-              fontSize:     '1.1rem',
+              fontSize:     textFontSizePt * zoom,
               lineHeight:   1.4,
               border:       '1.5px solid #2383E2',
               borderRadius: 3,

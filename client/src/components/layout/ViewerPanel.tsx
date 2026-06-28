@@ -69,7 +69,7 @@ export default function ViewerPanel() {
       <div className="flex items-center gap-2 border-b border-[#E3E2DF] px-4 py-1.5">
         <Button onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}>−</Button>
         <span className="text-xs text-[#6B6B6B] min-w-[3rem] text-center">
-          {Math.round(zoom * 100)}%
+          {Math.round((zoom / 1.5) * 100)}%
         </span>
         <Button onClick={() => setZoom(Math.min(3, zoom + 0.25))}>+</Button>
         <div className="ml-auto">

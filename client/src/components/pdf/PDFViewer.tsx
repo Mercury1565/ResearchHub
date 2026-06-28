@@ -4,8 +4,6 @@ import { TextLayer } from 'pdfjs-dist';
 import { loadPDF } from '../../utils/pdfUtils';
 import { useDocumentFileUrl } from '../../api/documents';
 import { useWorkspaceStore } from '../../store/workspace';
-import { usePDFSelection } from '../../hooks/usePDFSelection';
-import AnnotationLayer from './AnnotationLayer';
 import DrawingLayer from './DrawingLayer';
 import Spinner from '../ui/Spinner';
 
@@ -24,8 +22,6 @@ export default function PDFViewer({ documentId }: Props) {
   const renderedPages = useRef<Set<number>>(new Set());
   const zoom = useWorkspaceStore((s) => s.zoom);
   const activePage = useWorkspaceStore((s) => s.activePage);
-
-  usePDFSelection();
 
   useEffect(() => {
     if (!fileData?.url) return;
@@ -145,10 +141,6 @@ export default function PDFViewer({ documentId }: Props) {
               if (el) textLayerRefs.current.set(pageNum, el);
             }}
             className="textLayer absolute top-0 left-0"
-          />
-          <AnnotationLayer
-            documentId={documentId}
-            pageNumber={pageNum}
           />
           <DrawingLayer
             documentId={documentId}
