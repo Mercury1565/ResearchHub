@@ -24,12 +24,24 @@ func uuidStr(u pgtype.UUID) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", u.Bytes[0:4], u.Bytes[4:6], u.Bytes[6:8], u.Bytes[8:10], u.Bytes[10:16])
 }
 
-func mapProject(row dbgen.Project) models.Project {
+func mapProjectFields(id pgtype.UUID, name string, createdAt pgtype.Timestamptz) models.Project {
 	return models.Project{
-		ID:        uuidStr(row.ID),
-		Name:      row.Name,
-		CreatedAt: row.CreatedAt.Time,
+		ID:        uuidStr(id),
+		Name:      name,
+		CreatedAt: createdAt.Time,
 	}
+}
+
+func mapListProjectsRow(row dbgen.ListProjectsRow) models.Project {
+	return mapProjectFields(row.ID, row.Name, row.CreatedAt)
+}
+
+func mapCreateProjectRow(row dbgen.CreateProjectRow) models.Project {
+	return mapProjectFields(row.ID, row.Name, row.CreatedAt)
+}
+
+func mapRenameProjectRow(row dbgen.RenameProjectRow) models.Project {
+	return mapProjectFields(row.ID, row.Name, row.CreatedAt)
 }
 
 func mapDocument(row dbgen.Document) models.Document {
@@ -80,4 +92,12 @@ func mapAnnotation(row dbgen.Annotation, projectID string) (models.Annotation, e
 		DeepLink:     fmt.Sprintf("researchhub://project/%s/doc/%s?page=%d&highlight=%s", projectID, docID, row.PageNumber, annID),
 		CreatedAt:    row.CreatedAt.Time,
 	}, nil
+}
+
+func mapUserPublic(user dbgen.User) UserPublic {
+	return UserPublic{
+		ID:        uuidStr(user.ID),
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt.Time.UTC().Format("2006-01-02T15:04:05Z"),
+	}
 }
