@@ -2,29 +2,32 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/researchhub/server/internal/models"
 )
 
-// StreamChat streams AI responses for a project.
+// ChatResponse is returned by POST /projects/{projectID}/chat.
+type ChatResponse struct {
+	Message   string            `json:"message"`
+	Citations []models.Citation `json:"citations,omitempty"`
+}
+
+// StreamChat handles AI chat for a project.
 //
-// @Summary      Stream AI chat
-// @Description  Streams token-by-token AI responses over Server-Sent Events (SSE).
-//
-//	Set Accept: text/event-stream. Each event is a JSON token chunk.
-//	A final event with data: [DONE] signals end of stream.
-//
+// @Summary      Chat
+// @Description  Sends a message and returns the full AI response as JSON.
 // @Tags         chat
 // @Accept       json
-// @Produce      text/event-stream
+// @Produce      json
 // @Param        projectID  path      string       true  "Project UUID"
 // @Param        body       body      ChatRequest  true  "User message"
-// @Success      200        {string}  string       "SSE stream"
+// @Success      200        {object}  ChatResponse
 // @Failure      400        {object}  ErrorResponse
+// @Failure      500        {object}  ErrorResponse
 // @Router       /projects/{projectID}/chat [post]
 func (h *Handler) StreamChat(w http.ResponseWriter, r *http.Request) {
 	projectID := chi.URLParam(r, "projectID")
@@ -43,36 +46,20 @@ func (h *Handler) StreamChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		RespondError(w, http.StatusInternalServerError, "streaming not supported")
+	var sb strings.Builder
+	var citations []models.Citation
+
+	onToken := func(token string) { sb.WriteString(token) }
+	onCitations := func(c []models.Citation) { citations = c }
+
+	if err := h.rag.StreamChat(r.Context(), projectID, req.Message, onToken, onCitations); err != nil {
+		slog.Error("chat error", "err", err)
+		RespondError(w, http.StatusInternalServerError, "chat failed")
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no")
-
-	onToken := func(token string) {
-		data, _ := json.Marshal(map[string]string{"token": token})
-		fmt.Fprintf(w, "data: %s\n\n", data)
-		flusher.Flush()
-	}
-
-	onCitations := func(citations []models.Citation) {
-		data, _ := json.Marshal(map[string]any{"citations": citations})
-		fmt.Fprintf(w, "data: %s\n\n", data)
-		flusher.Flush()
-	}
-
-	if err := h.rag.StreamChat(r.Context(), projectID, req.Message, onToken, onCitations); err != nil {
-		slog.Error("chat stream error", "err", err)
-		errData, _ := json.Marshal(map[string]string{"error": err.Error()})
-		fmt.Fprintf(w, "data: %s\n\n", errData)
-		flusher.Flush()
-	}
-
-	fmt.Fprintf(w, "data: [DONE]\n\n")
-	flusher.Flush()
+	RespondJSON(w, http.StatusOK, ChatResponse{
+		Message:   sb.String(),
+		Citations: citations,
+	})
 }

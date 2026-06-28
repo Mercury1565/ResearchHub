@@ -27,8 +27,9 @@ type ragService struct {
 
 func NewRAGService(queries *dbgen.Queries, emb EmbeddingService, cfg *config.Config) (RAGService, error) {
 	client, err := genai.NewClient(context.Background(), &genai.ClientConfig{
-		APIKey:  cfg.ActiveAPIKey(),
-		Backend: genai.BackendGeminiAPI,
+		APIKey:      cfg.ActiveAPIKey(),
+		Backend:     genai.BackendGeminiAPI,
+		HTTPOptions: genai.HTTPOptions{APIVersion: "v1"},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("rag.New: %w", err)
@@ -37,7 +38,7 @@ func NewRAGService(queries *dbgen.Queries, emb EmbeddingService, cfg *config.Con
 		queries:   queries,
 		embedding: emb,
 		client:    client,
-		model:     "gemini-2.0-flash",
+		model:     "gemini-2.0-flash-lite",
 	}, nil
 }
 

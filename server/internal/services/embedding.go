@@ -20,13 +20,14 @@ type geminiEmbedding struct {
 
 func NewEmbeddingService(cfg *config.Config) (EmbeddingService, error) {
 	client, err := genai.NewClient(context.Background(), &genai.ClientConfig{
-		APIKey:  cfg.ActiveAPIKey(),
-		Backend: genai.BackendGeminiAPI,
+		APIKey:      cfg.ActiveAPIKey(),
+		Backend:     genai.BackendGeminiAPI,
+		HTTPOptions: genai.HTTPOptions{APIVersion: "v1"},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("embedding.New: %w", err)
 	}
-	return &geminiEmbedding{client: client, model: "text-embedding-004"}, nil
+	return &geminiEmbedding{client: client, model: "gemini-embedding-2"}, nil
 }
 
 func (e *geminiEmbedding) Embed(ctx context.Context, text string) ([]float32, error) {
