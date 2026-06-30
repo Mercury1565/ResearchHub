@@ -1,10 +1,21 @@
 -- migrations/003_vector.up.sql
--- Adds pgvector support for AI/RAG chat. Requires:
---   sudo apt-get install postgresql-18-pgvector
--- The rest of the app works without this migration.
+-- Adds pgvector support for AI/RAG chat. Requires the pgvector OS package:
+--   Debian/Ubuntu: apt-get install postgresql-18-pgvector
+--   Docker:        use image pgvector/pgvector:pg18 instead of postgres:18
+-- Migration succeeds without it — RAG features are simply unavailable.
 
-CREATE EXTENSION IF NOT EXISTS vector;
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS vector;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'pgvector not available — skipping vector column setup (RAG disabled)';
+END $$;
 
-ALTER TABLE doc_chunks ADD COLUMN embedding vector(768);
-
-CREATE INDEX ON doc_chunks USING hnsw (embedding vector_cosine_ops);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+    ALTER TABLE doc_chunks ADD COLUMN IF NOT EXISTS embedding vector(768);
+    CREATE INDEX IF NOT EXISTS doc_chunks_embedding_idx
+      ON doc_chunks USING hnsw (embedding vector_cosine_ops);
+  END IF;
+END $$;

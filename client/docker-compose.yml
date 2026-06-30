@@ -1,0 +1,11 @@
+services:
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Point at wherever the server is reachable from the browser
+        VITE_API_URL: "${VITE_API_URL:-http://localhost:8080}"
+    restart: unless-stopped
+    ports:
+      - "3000:3000"

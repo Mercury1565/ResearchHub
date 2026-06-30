@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -65,6 +66,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	hash, err := services.HashPassword(req.Password)
 	if err != nil {
+		slog.Error("Register: hash password", "err", err)
 		RespondError(w, http.StatusInternalServerError, "could not create account")
 		return
 	}
@@ -79,6 +81,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			RespondError(w, http.StatusConflict, "email already in use")
 			return
 		}
+		slog.Error("Register: create user", "err", err)
 		RespondError(w, http.StatusInternalServerError, "could not create account")
 		return
 	}
@@ -86,6 +89,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	userID := uuidStr(user.ID)
 	token, err := services.GenerateToken(userID, h.cfg.JWTSecret)
 	if err != nil {
+		slog.Error("Register: generate token", "err", err)
 		RespondError(w, http.StatusInternalServerError, "could not create account")
 		return
 	}
@@ -135,6 +139,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	userID := uuidStr(user.ID)
 	token, err := services.GenerateToken(userID, h.cfg.JWTSecret)
 	if err != nil {
+		slog.Error("Login: generate token", "err", err)
 		RespondError(w, http.StatusInternalServerError, "could not log in")
 		return
 	}
