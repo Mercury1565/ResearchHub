@@ -81,6 +81,7 @@ func NewRouter(
 			// Documents
 			r.Route("/documents/{documentID}", func(r chi.Router) {
 				r.Get("/", h.GetDocument)
+				r.Delete("/", h.DeleteDocument)
 				r.Get("/file", h.ServeDocumentFile)
 				r.Get("/annotations", h.ListAnnotations)
 				r.Post("/annotations", h.CreateAnnotation)

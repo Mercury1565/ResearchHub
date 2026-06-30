@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjects, useCreateProject, useRenameProject, useDeleteProject } from '../../api/projects';
-import { useDocuments, useUploadDocument } from '../../api/documents';
+import { useDocuments, useUploadDocument, useDeleteDocument } from '../../api/documents';
 import { useWorkspaceStore } from '../../store/workspace';
 import { useAuthStore } from '../../store/auth';
 import Button from '../ui/Button';
@@ -23,6 +23,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   const renameProject = useRenameProject();
   const deleteProject = useDeleteProject();
   const uploadDocument = useUploadDocument();
+  const deleteDocument = useDeleteDocument();
 
   const [creatingProject, setCreatingProject] = useState(false);
   const [newName, setNewName] = useState('');
@@ -30,6 +31,8 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   const [renameValue, setRenameValue] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [docMenuOpenId, setDocMenuOpenId] = useState<string | null>(null);
+  const [deleteDocConfirmId, setDeleteDocConfirmId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCreate = () => {
@@ -61,6 +64,18 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
           setActiveProject(null);
         }
         setDeleteConfirmId(null);
+      },
+    });
+  };
+
+  const handleDeleteDocument = () => {
+    if (!deleteDocConfirmId || !activeProjectId) return;
+    deleteDocument.mutate({ documentId: deleteDocConfirmId, projectId: activeProjectId }, {
+      onSuccess: () => {
+        if (activeDocumentId === deleteDocConfirmId) {
+          setActiveDocument(null);
+        }
+        setDeleteDocConfirmId(null);
       },
     });
   };
@@ -208,18 +223,43 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
             </div>
 
             {documents?.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => setActiveDocument(d.id)}
-                className={`w-full rounded px-2 py-1 text-left text-sm transition-colors duration-100 truncate ${
-                  activeDocumentId === d.id
-                    ? 'bg-[#EFEEEC] font-medium text-[#1A1A1A]'
-                    : 'text-[#1A1A1A] hover:bg-[#EFEEEC]'
-                }`}
-                title={d.file_name}
-              >
-                {d.file_name}
-              </button>
+              <div key={d.id} className="relative group">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setActiveDocument(d.id)}
+                    className={`flex-1 rounded px-2 py-1 text-left text-sm transition-colors duration-100 truncate ${
+                      activeDocumentId === d.id
+                        ? 'bg-[#EFEEEC] font-medium text-[#1A1A1A]'
+                        : 'text-[#1A1A1A] hover:bg-[#EFEEEC]'
+                    }`}
+                    title={d.file_name}
+                  >
+                    {d.file_name}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDocMenuOpenId(docMenuOpenId === d.id ? null : d.id);
+                    }}
+                    className="invisible group-hover:visible px-1 text-[#A0A09A] hover:text-[#6B6B6B] text-sm"
+                  >
+                    ···
+                  </button>
+                  {docMenuOpenId === d.id && (
+                    <div className="absolute right-0 top-7 z-10 rounded border border-[#E3E2DF] bg-white py-1 shadow-sm text-sm">
+                      <button
+                        onClick={() => {
+                          setDeleteDocConfirmId(d.id);
+                          setDocMenuOpenId(null);
+                        }}
+                        className="w-full px-3 py-1 text-left text-[#E03E3E] hover:bg-[#FDF2F2]"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
 
             {documents?.length === 0 && (
@@ -246,6 +286,16 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
         <div className="flex justify-end gap-2">
           <Button onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
           <Button variant="danger" onClick={handleDelete}>Delete</Button>
+        </div>
+      </Modal>
+
+      <Modal open={!!deleteDocConfirmId} onClose={() => setDeleteDocConfirmId(null)} title="Delete document">
+        <p className="mb-4 text-sm text-[#6B6B6B]">
+          This will permanently delete the document and all its annotations.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button onClick={() => setDeleteDocConfirmId(null)}>Cancel</Button>
+          <Button variant="danger" onClick={handleDeleteDocument}>Delete</Button>
         </div>
       </Modal>
     </div>

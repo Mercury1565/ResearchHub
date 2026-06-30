@@ -155,6 +155,39 @@ func (h *Handler) processDocument(docID pgtype.UUID, pdfBytes []byte) {
 	slog.Info("document processed", "doc_id", docIDStr, "pages", len(pages), "chunks", embedded)
 }
 
+// DeleteDocument deletes a document and its storage object.
+//
+// @Summary      Delete document
+// @Description  Deletes a document, its chunks, and its stored PDF file.
+// @Tags         documents
+// @Param        documentID  path  string  true  "Document UUID"
+// @Success      204
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /documents/{documentID} [delete]
+func (h *Handler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
+	id, err := pgUUID(chi.URLParam(r, "documentID"))
+	if err != nil {
+		RespondError(w, http.StatusBadRequest, "invalid document id")
+		return
+	}
+
+	doc, err := h.queries.GetDocument(r.Context(), id)
+	if err != nil {
+		RespondError(w, http.StatusNotFound, "document not found")
+		return
+	}
+
+	_ = h.storage.Delete(r.Context(), doc.StoragePath)
+
+	if err := h.queries.DeleteDocument(r.Context(), id); err != nil {
+		RespondError(w, http.StatusInternalServerError, "could not delete document")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // GetDocument returns document metadata.
 //
 // @Summary      Get document

@@ -31,6 +31,19 @@ export function useUploadDocument() {
   );
 }
 
+export function useDeleteDocument() {
+  const qc = useQueryClient();
+  return useMutation(
+    ({ documentId }: { documentId: string; projectId: string }) =>
+      apiClient.delete(`documents/${documentId}`).json(),
+    {
+      onSuccess: (_data, vars) => {
+        qc.invalidateQueries(['documents', vars.projectId]);
+      },
+    }
+  );
+}
+
 export function useDocumentFileUrl(documentId: string | null) {
   return useQuery<{ url: string }>(
     ['document-file', documentId],

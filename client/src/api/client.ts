@@ -3,7 +3,7 @@ import ky from 'ky';
 const TOKEN_KEY = 'rh_token';
 
 export const apiClient = ky.create({
-  prefixUrl: '/api',
+  prefixUrl: `${import.meta.env.VITE_API_URL ?? ''}/api`,
   timeout: 30_000,
   retry: { limit: 1 },
   hooks: {
